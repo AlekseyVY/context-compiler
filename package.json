@@ -1,0 +1,49 @@
+{
+  "name": "context-compiler",
+  "version": "0.1.0",
+  "description": "Agentic context compiler for AI-assisted development in TypeScript/JavaScript projects",
+  "author": "Aleksey Vasiliev <alekseyvy@gmail.com> (https://github.com/AlekseyVY)",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlekseyVY/context-compiler.git"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "cursor",
+    "context",
+    "typescript",
+    "angular",
+    "react",
+    "llm",
+    "developer-tools"
+  ],
+  "type": "module",
+  "bin": {
+    "context-compiler": "./dist/bin/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "base-skills/",
+    "CONTEXT.md.template",
+    "NOTICE",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx src/bin/cli.ts",
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.0"
+  }
+}
