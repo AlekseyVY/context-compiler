@@ -164,7 +164,7 @@ async function resolveLibEntries(
   }
 
   // Collect lib from this config's own compilerOptions
-  const ownLib = parsed.compilerOptions?.lib ?? [];
+  const ownLib = (parsed.compilerOptions?.lib ?? []).map((l: string) => l.toLowerCase());
 
   // Then follow each referenced child config
   const dir = join(tsconfigPath, '..');
