@@ -3,18 +3,32 @@ import { chat } from '../lib/llm-client.js';
 import { buildSystemPrompt, buildUserPrompt } from './prompts.js';
 import type { ScannedConfig, ResolvedSkill } from '../types.js';
 import type { Credentials } from '../lib/credentials.js';
+import { logger } from '../lib/debug-logger.js';
 
 export async function composeContext(
   config: ScannedConfig,
   skills: ResolvedSkill[],
   credentials: Credentials,
 ): Promise<string> {
+  const systemPrompt = buildSystemPrompt();
+  const userPrompt = buildUserPrompt(config, skills);
+
+  // BEFORE the call — log exactly what the LLM will receive
+  await logger.log('PHASE 3 — LLM request', {
+    model: credentials.model,
+    temperature: 0.1,
+    maxTokens: 2048,
+    skillsInContext: skills.map(s => s.technology),
+  });
+  await logger.log('PHASE 3 — system prompt', systemPrompt);
+  await logger.log('PHASE 3 — user prompt', userPrompt);
+
   const response = await chat({
     apiKey: credentials.apiKey,
     model: credentials.model,
     messages: [
-      { role: 'system', content: buildSystemPrompt() },
-      { role: 'user',   content: buildUserPrompt(config, skills) },
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userPrompt },
     ],
     temperature: 0.1,
     maxTokens: 2048,
@@ -30,24 +44,29 @@ export async function composeContext(
     throw new Error('[context-compiler] LLM returned empty content.');
   }
 
-  return normalizeMdcOutput(raw);
+  // AFTER the call — log the raw response before normalization,
+  // so we can see if the model wrapped output in fences or mangled frontmatter
+  await logger.log('PHASE 3 — LLM raw response', {
+    length: raw.length,
+    content: raw,
+  });
+
+  const normalized = normalizeMdcOutput(raw);
+
+  // Log the final normalized output so we can compare it with the raw version
+  await logger.log('PHASE 3 — normalized output', normalized);
+
+  return normalized;
 }
 
-// LLMs sometimes wrap the entire output in a ```yaml or ```markdown fence,
-// or produce double frontmatter. This function produces clean .mdc content
-// regardless of how the model decided to format its response.
 function normalizeMdcOutput(raw: string): string {
   let content = raw.trim();
 
-  // Strip outer code fence if the model wrapped everything in ```yaml or ```markdown
-  // Pattern: starts with ```<lang>\n and ends with ```
   const fenceMatch = content.match(/^```(?:yaml|markdown|mdc|)?\n([\s\S]*?)```$/);
   if (fenceMatch?.[1]) {
     content = fenceMatch[1].trim();
   }
 
-  // At this point content should start with --- (frontmatter).
-  // If the model omitted frontmatter entirely, add it defensively.
   if (!content.startsWith('---')) {
     return `---\nalwaysApply: true\ndescription: Auto-generated project context\n---\n\n${content}`;
   }

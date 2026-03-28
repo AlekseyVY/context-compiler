@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { runCompile } from "../commands/compile.js";
 import { runInit } from "../commands/init.js";
+import { logger } from "../lib/debug-logger.js";
 
 const USAGE = `
 context-compiler — agentic context compiler for AI-assisted development
@@ -25,6 +26,8 @@ Examples:
 
 async function main(): Promise<void> {
   const [,, command, ...args] = process.argv;
+  const isDebug = args.includes('--debug');
+  const projectRoot = process.cwd();
 
   if (!command || command === '--help' || command === '-h') {
     console.log(USAGE);
@@ -36,11 +39,16 @@ async function main(): Promise<void> {
     return;
   }
 
-if (command === 'compile') {
-  const dryRun = !args.includes('--apply');
-  await runCompile(process.cwd(), dryRun);
-  return;
-}
+  if (isDebug) {
+    logger.enable(projectRoot);
+    await logger.init(projectRoot, args);
+  }
+
+  if (command === 'compile') {
+    const dryRun = !args.includes('--apply');
+    await runCompile(process.cwd(), dryRun);
+    return;
+  }
 
   console.error(`Unknown command: "${command}"\n`);
   console.log(USAGE);

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScannedConfig, DetectedTechnology, PackageJsonData } from '../types.js';
 import { TECHNOLOGY_MAP } from '../types.js';
+import { logger } from '../lib/debug-logger.js';
 
 async function safeReadFile(path: string): Promise<string | null> {
   try {
@@ -108,13 +109,31 @@ export async function scanProjectConfig(projectRoot: string): Promise<ScannedCon
     ? (JSON.parse(tsconfigRaw) as { compilerOptions?: Record<string, unknown> })
     : null;
   const resolvedLib = await resolveLibEntries(join(projectRoot, 'tsconfig.json'));
+  const technologies = await detectTechnologies(pkg, packageRoot, resolvedLib);
+  const eslintRules = eslintRaw ? parseEslintRules(eslintRaw) : [];
+
+  await logger.log('PHASE 1 — Scanner output', {
+    projectName: pkg.name,
+    projectRoot,
+    // Show every raw dependency so we can see what TECHNOLOGY_MAP matched against
+    allDependencies: { ...pkg.dependencies, ...pkg.devDependencies },
+    engines: pkg.engines,
+    detectedTechnologies: technologies,
+    resolvedLib,
+    tsCompilerOptions: tsConfig?.compilerOptions ?? null,
+    eslintRulesCount: eslintRules.length,
+    eslintRules,
+    hasReadme: !!readmeRaw,
+    hasContextMd: !!contextMdRaw,
+    contextMdPreview: contextMdRaw?.slice(0, 500) ?? null,
+  });
 
   return {
     projectName: pkg.name ?? 'unknown',
     projectRoot,
-    technologies: await detectTechnologies(pkg, packageRoot, resolvedLib),
+    technologies,
     tsCompilerOptions: tsConfig?.compilerOptions ?? null,
-    eslintRules: eslintRaw ? parseEslintRules(eslintRaw) : [],
+    eslintRules, 
     readmeContent: readmeRaw,
     contextMdContent: contextMdRaw,
   };

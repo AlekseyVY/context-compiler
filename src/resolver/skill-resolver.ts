@@ -2,6 +2,7 @@ import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { DetectedTechnology, ResolvedSkill } from '../types.js';
+import { logger } from '../lib/debug-logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const packageRoot = join(__filename, '..', '..', '..');
@@ -37,6 +38,17 @@ async function resolveOneSkill(tech: DetectedTechnology): Promise<ResolvedSkill 
     const versionedPath = join(base, String(tech.major), 'skill.md');
     const content = await tryReadSkill(versionedPath);
     if (content) {
+
+      await logger.log(`PHASE 2 — Skill resolution: ${tech.name}@${tech.major}`, {
+        technology: tech.name,
+        requestedMajor: tech.major,
+        versionedPathTried: tech.major > 0 ? join(base, String(tech.major), 'skill.md') : null,
+        genericPathTried: join(base, 'skill.md'),
+        result: content
+          ? { resolved: true, isFallback: tech.major === 0, contentLength: content.length }
+          : { resolved: false },
+      });
+
       return {
         technology: tech.name,
         requestedMajor: tech.major,
@@ -83,6 +95,14 @@ export async function resolveSkills(
     : [jsBase, ...technologies];
 
   const results = await Promise.all(allTechnologies.map(resolveOneSkill));
-
+  await logger.log('PHASE 2 — All resolved skills', {
+    requested: technologies.map(t => `${t.name}@${t.major}`),
+    resolved: results.map(r => ({
+      technology: r?.technology,
+      resolvedMajor: r?.resolvedMajor,
+      isFallback: r?.isFallback,
+      contentLength: r?.content?.length,
+    })),
+  });
   return results.filter((r): r is ResolvedSkill => r !== null);
 }
