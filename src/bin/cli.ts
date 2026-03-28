@@ -1,3 +1,5 @@
+import { runInit } from "../commands/init.js";
+
 const USAGE = `
 context-compiler — agentic context compiler for AI-assisted development
 
@@ -28,7 +30,7 @@ async function main(): Promise<void> {
   }
 
   if (command === 'init') {
-    console.log('[TODO] init: not implemented yet');
+    await runInit(process.cwd());
     return;
   }
 
