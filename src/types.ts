@@ -7,14 +7,13 @@
  *  Решение «есть скилл или нет» принимает файловая система — если существует
  *  base-skills/angular/, значит Angular поддерживается. */
 export const TECHNOLOGY_MAP: Record<string, string> = {
+  // Frontend frameworks
   '@angular/core': 'angular',
   'react': 'react',
-  'vue': 'vue',
-  'next': 'next',
-  'nuxt': 'nuxt',
+  // Meta-frameworks
+  'next': 'nextjs', 
+  // Backend frameworks
   '@nestjs/core': 'nestjs',
-  'express': 'express',
-  'fastify': 'fastify',
 } as const;
 
 export interface PackageJsonData {

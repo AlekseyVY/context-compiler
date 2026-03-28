@@ -33,6 +33,7 @@ async function skillExists(packageRoot: string, techName: string): Promise<boole
 async function detectTechnologies(
   pkg: PackageJsonData,
   packageRoot: string,
+  tsConfig: { compilerOptions?: Record<string, unknown> } | null,
 ): Promise<DetectedTechnology[]> {
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
   const results: DetectedTechnology[] = [];
@@ -47,6 +48,23 @@ async function detectTechnologies(
   const tsRaw = pkg.devDependencies?.['typescript'] ?? pkg.dependencies?.['typescript'];
   if (tsRaw && (await skillExists(packageRoot, 'typescript'))) {
     results.push({ name: 'typescript', raw: tsRaw, major: extractMajorVersion(tsRaw) });
+  }
+
+  const hasTypesNode = !!(
+    pkg.devDependencies?.['@types/node'] ??
+    pkg.dependencies?.['@types/node']
+  );
+
+  const libArray = (tsConfig?.compilerOptions?.lib as string[] | undefined)
+    ?.map(l => l.toLowerCase()) ?? [];
+
+  const hasDomLib = libArray.includes('dom');
+
+  const shouldAddNode = hasTypesNode || (!hasDomLib && libArray.length > 0);
+
+  if (shouldAddNode && (await skillExists(packageRoot, 'nodejs'))) {
+    const raw = pkg.engines?.node ?? '>=22';
+    results.push({ name: 'nodejs', raw, major: extractMajorVersion(raw) });
   }
 
   return results;
@@ -94,7 +112,7 @@ export async function scanProjectConfig(projectRoot: string): Promise<ScannedCon
   return {
     projectName: pkg.name ?? 'unknown',
     projectRoot,
-    technologies: await detectTechnologies(pkg, packageRoot),
+    technologies: await detectTechnologies(pkg, packageRoot, tsConfig),
     tsCompilerOptions: tsConfig?.compilerOptions ?? null,
     eslintRules: eslintRaw ? parseEslintRules(eslintRaw) : [],
     readmeContent: readmeRaw,

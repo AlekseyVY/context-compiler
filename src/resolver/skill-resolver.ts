@@ -72,10 +72,17 @@ async function resolveOneSkill(tech: DetectedTechnology): Promise<ResolvedSkill 
 export async function resolveSkills(
   technologies: DetectedTechnology[],
 ): Promise<ResolvedSkill[]> {
-  const results = await Promise.all(technologies.map(resolveOneSkill));
+  // JavaScript is always the foundational layer — it exists beneath every
+  // TypeScript project, not as a fallback for when TS is absent.
+  // We inject it unconditionally and prepend it so the LLM sees it first,
+  // establishing JS idioms as the base before TS-specific rules layer on top.
+  const jsBase: DetectedTechnology = { name: 'javascript', major: 0, raw: '' };
+  const alreadyHasJs = technologies.some(t => t.name === 'javascript');
+  const allTechnologies = alreadyHasJs
+    ? technologies
+    : [jsBase, ...technologies];
 
-  // Filter out nulls from technologies with no matching skill file.
-  // TypeScript's type narrowing needs the explicit predicate here because
-  // Array.filter alone does not narrow T | null to T in generic contexts.
+  const results = await Promise.all(allTechnologies.map(resolveOneSkill));
+
   return results.filter((r): r is ResolvedSkill => r !== null);
 }
