@@ -17,7 +17,7 @@ export async function composeContext(
   await logger.log('PHASE 3 — LLM request', {
     model: credentials.model,
     temperature: 0.1,
-    maxTokens: 2048,
+    maxTokens: 32768,
     skillsInContext: skills.map(s => s.technology),
   });
   await logger.log('PHASE 3 — system prompt', systemPrompt);
@@ -31,7 +31,7 @@ export async function composeContext(
       { role: 'user',   content: userPrompt },
     ],
     temperature: 0.1,
-    maxTokens: 2048,
+    maxTokens: 32768,
   });
 
   const firstChoice = response.choices[0];

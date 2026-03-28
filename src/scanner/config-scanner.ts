@@ -144,9 +144,12 @@ async function collectRootLibEntries(projectRoot: string): Promise<string[]> {
 
   try {
     const entries = await readdir(projectRoot);
-    // Match any file starting with "tsconfig" and ending with ".json"
     files = entries.filter(f => f.startsWith('tsconfig') && f.endsWith('.json'));
-  } catch {
+    
+    // Log what we found so debug output shows the scan result
+    await logger.log('PHASE 1 — tsconfig files found', { projectRoot, files });
+  } catch (err) {
+    await logger.log('PHASE 1 — readdir failed', { projectRoot, error: String(err) });
     return [];
   }
 
@@ -157,17 +160,21 @@ async function collectRootLibEntries(projectRoot: string): Promise<string[]> {
 
       try {
         const parsed = JSON.parse(
-          // Strip JSONC comments — tsconfig files allow them
           raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
         ) as { compilerOptions?: { lib?: string[] } };
 
-        return (parsed.compilerOptions?.lib ?? []).map(l => l.toLowerCase());
-      } catch {
+        const lib = (parsed.compilerOptions?.lib ?? []).map(l => l.toLowerCase());
+        
+        // Log each file's extracted lib so we can see what was parsed
+        await logger.log(`PHASE 1 — lib from ${file}`, { lib });
+        
+        return lib;
+      } catch (err) {
+        await logger.log(`PHASE 1 — parse failed for ${file}`, { error: String(err) });
         return [];
       }
     })
   );
 
-  // Deduplicate — multiple tsconfigs may declare "dom" independently
   return [...new Set(allLibs.flat())];
 }
