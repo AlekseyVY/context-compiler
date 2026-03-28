@@ -39,7 +39,6 @@ export interface ScannedConfig {
   eslintRules: string[];
   readmeContent: string | null;
   contextMdContent: string | null;  // содержимое CONTEXT.md если есть
-  scannedFilePaths: string[];       // для вычисления хэша кэша
 }
 
 // ── СКИЛЛЫ И ПРАВИЛА ───────────────────────────────────────────────────────

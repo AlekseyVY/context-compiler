@@ -27,7 +27,17 @@
     ".": "./dist/index.js"
   },
   "files": [
-    "dist/",
+    "dist/bin",
+    "dist/commands",
+    "dist/composer",
+    "dist/lib",
+    "dist/output",
+    "dist/resolver",
+    "dist/scanner",
+    "dist/types.js",
+    "dist/types.d.ts",
+    "dist/types.js.map",
+    "dist/types.d.ts.map",
     "base-skills/",
     "CONTEXT.md.template",
     "NOTICE",

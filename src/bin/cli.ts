@@ -1,3 +1,6 @@
+import { runCompile } from "../commands/compile.js";
+import { runInit } from "../commands/init.js";
+
 const USAGE = `
 context-compiler — agentic context compiler for AI-assisted development
 
@@ -28,15 +31,15 @@ async function main(): Promise<void> {
   }
 
   if (command === 'init') {
-    console.log('[TODO] init: not implemented yet');
+    await runInit(process.cwd());
     return;
   }
 
-  if (command === 'compile') {
-    const isDryRun = !args.includes('--apply');
-    console.log(`[TODO] compile: not implemented yet (dry-run: ${isDryRun})`);
-    return;
-  }
+if (command === 'compile') {
+  const dryRun = !args.includes('--apply');
+  await runCompile(process.cwd(), dryRun);
+  return;
+}
 
   console.error(`Unknown command: "${command}"\n`);
   console.log(USAGE);
