@@ -46,7 +46,8 @@
   "scripts": {
     "dev": "tsx src/bin/cli.ts",
     "build": "tsc --project tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release": "npm run build && npm version patch && npm publish"
   },
   "engines": {
     "node": ">=22.0.0"

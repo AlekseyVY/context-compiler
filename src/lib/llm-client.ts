@@ -9,7 +9,7 @@ export async function chat(params: LLMChatParams): Promise<LLMResponse> {
     messages,
     tools,
     temperature = 0.2,
-    maxTokens = 4096,
+    maxTokens = 32768,
   } = params;
 
   const body: Record<string, unknown> = {
