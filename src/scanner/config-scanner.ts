@@ -1,4 +1,4 @@
-import { readFile, access } from 'node:fs/promises';
+import { readFile, access, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScannedConfig, DetectedTechnology, PackageJsonData } from '../types.js';
@@ -108,7 +108,7 @@ export async function scanProjectConfig(projectRoot: string): Promise<ScannedCon
   const tsConfig = tsconfigRaw
     ? (JSON.parse(tsconfigRaw) as { compilerOptions?: Record<string, unknown> })
     : null;
-  const resolvedLib = await resolveLibEntries(join(projectRoot, 'tsconfig.json'));
+  const resolvedLib = await collectRootLibEntries(join(projectRoot, 'tsconfig.json'));
   const technologies = await detectTechnologies(pkg, packageRoot, resolvedLib);
   const eslintRules = eslintRaw ? parseEslintRules(eslintRaw) : [];
 
@@ -139,45 +139,35 @@ export async function scanProjectConfig(projectRoot: string): Promise<ScannedCon
   };
 }
 
-// Collect all lib entries from a tsconfig and any configs it references.
-// This handles the Vite composite build pattern where the root tsconfig.json
-// has no compilerOptions at all — only { "references": [...] }.
-// Without following references we'd always see an empty lib array for
-// root configs, making DOM detection impossible and causing false Node.js
-// skill injection.
-async function resolveLibEntries(
-  tsconfigPath: string,
-  visited = new Set<string>(),
-): Promise<string[]> {
-  // Guard against circular references (unlikely but possible in monorepos)
-  if (visited.has(tsconfigPath)) return [];
-  visited.add(tsconfigPath);
+async function collectRootLibEntries(projectRoot: string): Promise<string[]> {
+  let files: string[];
 
-  const raw = await safeReadFile(tsconfigPath);
-  if (!raw) return [];
-
-  let parsed: { compilerOptions?: { lib?: string[] }; references?: { path: string }[] };
   try {
-    parsed = JSON.parse(raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''));
+    const entries = await readdir(projectRoot);
+    // Match any file starting with "tsconfig" and ending with ".json"
+    files = entries.filter(f => f.startsWith('tsconfig') && f.endsWith('.json'));
   } catch {
     return [];
   }
 
-  // Collect lib from this config's own compilerOptions
-  const ownLib = (parsed.compilerOptions?.lib ?? []).map((l: string) => l.toLowerCase());
+  const allLibs = await Promise.all(
+    files.map(async file => {
+      const raw = await safeReadFile(join(projectRoot, file));
+      if (!raw) return [];
 
-  // Then follow each referenced child config
-  const dir = join(tsconfigPath, '..');
-  const childLibs = await Promise.all(
-    (parsed.references ?? []).map(ref => {
-      // A reference path can point to a directory (resolved to tsconfig.json)
-      // or directly to a .json file
-      const refPath = ref.path.endsWith('.json')
-        ? join(dir, ref.path)
-        : join(dir, ref.path, 'tsconfig.json');
-      return resolveLibEntries(refPath, visited);
+      try {
+        const parsed = JSON.parse(
+          // Strip JSONC comments — tsconfig files allow them
+          raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+        ) as { compilerOptions?: { lib?: string[] } };
+
+        return (parsed.compilerOptions?.lib ?? []).map(l => l.toLowerCase());
+      } catch {
+        return [];
+      }
     })
   );
 
-  return [...ownLib, ...childLibs.flat()];
+  // Deduplicate — multiple tsconfigs may declare "dom" independently
+  return [...new Set(allLibs.flat())];
 }
