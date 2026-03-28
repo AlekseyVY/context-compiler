@@ -2,12 +2,39 @@ import { mkdir, copyFile, access, readFile, writeFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCredentials, saveCredentials, prompt } from '../lib/credentials.js';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function exists(path: string): Promise<boolean> {
   try { await access(path); return true; } catch { return false; }
+}
+
+async function patchProjectPackageJson(projectRoot: string): Promise<void> {
+  const pkgPath = join(projectRoot, 'package.json');
+  const raw = await readFile(pkgPath, 'utf-8');
+  const pkg = JSON.parse(raw) as Record<string, unknown>;
+
+  // Добавляем скрипты — не перезаписываем если уже есть
+  const scripts = (pkg['scripts'] ?? {}) as Record<string, string>;
+  if (!scripts['context:compile']) {
+    scripts['context:compile'] = 'context-compiler compile --apply';
+  }
+  if (!scripts['context:dry']) {
+    scripts['context:dry'] = 'context-compiler compile --dry-run';
+  }
+  pkg['scripts'] = scripts;
+
+  // Добавляем себя в devDependencies
+  const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>;
+  if (!devDeps['context-compiler']) {
+    devDeps['context-compiler'] = '^0.1.2';
+  }
+  pkg['devDependencies'] = devDeps;
+
+  await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+  process.stderr.write('✅ package.json updated with context-compiler scripts\n');
 }
 
 async function ensureGitignore(projectRoot: string, entry: string): Promise<void> {
@@ -84,4 +111,10 @@ export async function runInit(projectRoot: string): Promise<void> {
   process.stderr.write('  1. Edit CONTEXT.md with your project-specific rules\n');
   process.stderr.write('  2. Run: npx context-compiler compile --dry-run\n');
   process.stderr.write('  3. Review output, then: npx context-compiler compile --apply\n\n');
+
+  await patchProjectPackageJson(projectRoot);
+
+  process.stderr.write('Installing context-compiler as devDependency...\n');
+  execSync('npm install', { cwd: projectRoot, stdio: 'inherit' });
+  process.stderr.write('✅ Installed\n');
 }
