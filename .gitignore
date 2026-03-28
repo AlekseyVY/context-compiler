@@ -3,3 +3,6 @@ dist/
 .env
 *.cache.json
 .DS_Store
+
+
+src/debug-scan.ts
