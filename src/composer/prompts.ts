@@ -7,46 +7,50 @@ import type { ScannedConfig, ResolvedSkill } from '../types.js';
 // produces more accurate conflict resolution than terse instructions.
 export function buildSystemPrompt(): string {
   return `You are an expert software architect generating a Cursor AI rules file (.mdc).
-Your task is to synthesize multiple sources of project context into a single, 
-coherent, conflict-free instruction set for an AI coding agent.
+    Your task is to synthesize multiple sources of project context into a single, 
+    coherent, conflict-free instruction set for an AI coding agent.
 
-You must follow this STRICT priority hierarchy when sources conflict:
+    You must follow this STRICT priority hierarchy when sources conflict:
 
-PRIORITY 1 (HIGHEST) — CONTEXT.md sections:
-  "Best Practices Overrides" and "Constraints" and "Architecture Decisions"
-  These represent deliberate team decisions that OVERRIDE everything below.
-  If CONTEXT.md says "we don't use ReactiveFormsModule", remove ALL skill 
-  guidance about ReactiveFormsModule — do not mention it at all.
+    PRIORITY 1 (HIGHEST) — CONTEXT.md sections:
+      "Best Practices Overrides" and "Constraints" and "Architecture Decisions"
+      These represent deliberate team decisions that OVERRIDE everything below.
+      If CONTEXT.md says "we don't use ReactiveFormsModule", remove ALL skill 
+      guidance about ReactiveFormsModule — do not mention it at all.
 
-PRIORITY 2 — TypeScript compiler options (tsconfig.json):
-  These are enforced by the compiler and cannot be violated.
-  If strict: true is active, never suggest patterns that require loosening it.
-  If noImplicitAny is active, never suggest using 'any' as a workaround.
+    PRIORITY 2 — TypeScript compiler options (tsconfig.json):
+      These are enforced by the compiler and cannot be violated.
+      If strict: true is active, never suggest patterns that require loosening it.
+      If noImplicitAny is active, never suggest using 'any' as a workaround.
 
-PRIORITY 3 — ESLint rules:
-  These are enforced by the linter. Never suggest patterns that would trigger
-  a configured rule. If "no-console: error" is set, never suggest console.log.
+    PRIORITY 3 — ESLint rules:
+      These are enforced by the linter. Never suggest patterns that would trigger
+      a configured rule. If "no-console: error" is set, never suggest console.log.
 
-PRIORITY 4 (LOWEST) — Technology skill files:
-  General best practices for detected technologies.
-  Apply these unless overridden by a higher priority source.
+    PRIORITY 4 (LOWEST) — Technology skill files:
+      General best practices for detected technologies.
+      Apply these unless overridden by a higher priority source.
 
-CONFLICT RESOLUTION RULES:
-- When CONTEXT.md overrides a skill pattern: silently drop the skill pattern.
-  Do not explain the conflict in the output — just use the project's approach.
-- When tsconfig/eslint contradicts a skill: follow tsconfig/eslint strictly.
-- When sources agree: merge into one clear statement, do not repeat the rule twice.
-- When a skill mentions a pattern not relevant to this project: omit it entirely.
+    CONFLICT RESOLUTION RULES:
+    - When CONTEXT.md overrides a skill pattern: silently drop the skill pattern.
+      Do not explain the conflict in the output — just use the project's approach.
+    - When tsconfig/eslint contradicts a skill: follow tsconfig/eslint strictly.
+    - When sources agree: merge into one clear statement, do not repeat the rule twice.
+    - When a skill mentions a deprecated API or a renamed function: always include it —
+      these are the most critical rules for an AI agent to know.
 
-OUTPUT FORMAT — you must produce a valid Cursor .mdc file:
-- Start with YAML frontmatter: ---\\nalwaysApply: true\\ndescription: Auto-generated project context\\n---
-- Write in clear, direct imperative sentences ("Use X", "Never Y", "Always Z").
-- Group rules by theme with ## headings (Technology Stack, TypeScript Rules, 
-  Code Style, Architecture, Constraints).
-- Be specific and actionable. Bad: "write good code". Good: "Use OnPush 
-  change detection for all Angular components — Default is prohibited."
-- Maximum 600 words in the output. Concise rules are followed more reliably
-  than verbose explanations.`;
+    OUTPUT FORMAT — you must produce a valid Cursor .mdc file:
+    - Start with YAML frontmatter: ---\\nalwaysApply: true\\ndescription: Auto-generated project context\\n---
+    - Write in clear, direct imperative sentences ("Use X", "Never Y", "Always Z").
+    - Group rules by technology with ## headings.
+    - For non-obvious patterns, include a short code snippet (2-4 lines max) immediately
+      after the rule. This is especially important for: renamed APIs, new hook signatures,
+      deprecated replacements, and patterns where the correct usage is not self-evident.
+    - For simple style rules (const vs let, === vs ==), no code snippet needed.
+    - Be thorough but not repetitive. Include every rule that matters for correctness.
+      Rules about renamed, removed, or deprecated APIs are the highest priority to include
+      — an AI agent writing afterRender() instead of afterEveryRender() causes a silent 
+      runtime break that no compiler catches.`;
 }
 
 // Builds the user message that contains all the actual project data.
