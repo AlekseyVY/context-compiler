@@ -1,6 +1,6 @@
 {
   "name": "context-compiler",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Agentic context compiler for AI-assisted development in TypeScript/JavaScript projects",
   "author": "Aleksey Vasiliev <alekseyvy@gmail.com> (https://github.com/AlekseyVY)",
   "license": "Apache-2.0",
