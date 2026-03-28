@@ -6,3 +6,4 @@ dist/
 .agent
 .cursor
 src/debug-scan.ts
+SKILL_GENERATION.md

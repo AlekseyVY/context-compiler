@@ -1,49 +1,91 @@
 ---
-name: javascript
-description: Modern JavaScript ES2025+ patterns and best practices
+name: javascript-generic
+description: JavaScript (modern/generic) patterns, idioms and best practices for AI coding agents
 ---
 
-# JavaScript (ES2025+) Best Practices
+# JavaScript (Generic Modern) — Skill File
 
-## Core Principles
+## What changed in this version
 
-Modern JavaScript projects that deliberately avoid TypeScript do so for
-specific reasons — fast prototyping, scripting, or team preference. Respect
-this decision. Never suggest adding TypeScript to a JavaScript project unless
-explicitly asked.
+Modern JavaScript (ES2020+) stabilized several long-awaited features that change how code should be structured. Optional chaining (`?.`) and nullish coalescing (`??`) replace verbose null-guard chains. Top-level `await` is available in ES modules, removing the need for IIFE async wrappers. `Promise.allSettled`, `Promise.any`, and structured `error.cause` change how multi-promise flows and error chains are expressed. Logical assignment operators (`&&=`, `||=`, `??=`) replace common conditional assignment patterns.
 
-## Patterns — DO
+---
 
-**Use `structuredClone` for deep object cloning.**
-It is native, handles circular references, and works with all serializable types.
-```javascript
-const copy = structuredClone(original); // not JSON.parse(JSON.stringify(...))
+## Core patterns — DO
+
+**Use optional chaining for nested property access**
+```js
+const city = user?.address?.city ?? 'Unknown';
 ```
+Eliminates manual null checks at every level; crashes are replaced with a clean `undefined` fallback.
 
-**Use `Object.groupBy` and `Map.groupBy` for grouping (ES2024+).**
-```javascript
-const byStatus = Object.groupBy(users, user => user.status);
+**Use nullish coalescing, not `||`, for default values**
+```js
+const timeout = config.timeout ?? 3000; // 0 is preserved; || would replace it
 ```
+`||` incorrectly treats `0`, `''`, and `false` as falsy — `??` only triggers on `null`/`undefined`.
 
-**Use `Promise.withResolvers` for externally-resolved promises (ES2024+).**
-```javascript
-const { promise, resolve, reject } = Promise.withResolvers();
+**Use `Promise.allSettled` when all results matter**
+```js
+const results = await Promise.allSettled([fetchA(), fetchB()]);
+results.forEach(r => r.status === 'fulfilled' ? use(r.value) : log(r.reason));
 ```
+`Promise.all` short-circuits on the first rejection; use `allSettled` when partial success is valid.
 
-**Use nullish coalescing `??` and optional chaining `?.` consistently.**
-Never use `||` for default values when `0` or `''` are valid inputs.
+**Propagate error context with `cause`**
+```js
+throw new Error('DB query failed', { cause: originalError });
+```
+Preserves the original stack trace without string concatenation, and is readable by `error.cause`.
 
-**Use `Array.at(-1)` instead of `arr[arr.length - 1]`.**
+**Use logical assignment for conditional mutation**
+```js
+config.retries ??= 3;   // assign only if null/undefined
+settings.debug ||= false; // assign only if falsy
+```
+Replaces the `if (!x) x = y` pattern with a single declarative line.
+
+**Use `structuredClone` for deep copies**
+```js
+const copy = structuredClone(original);
+```
+Replaces `JSON.parse(JSON.stringify(...))` — handles `Date`, `Map`, `Set`, circular refs.
+
+**Use `Array.at()` for negative indexing**
+```js
+const last = arr.at(-1); // replaces arr[arr.length - 1]
+```
+Cleaner, less error-prone, and semantically explicit about intent.
+
+---
 
 ## Anti-patterns — AVOID
 
-Never use `var` — always `const` by default, `let` only when reassignment
-is necessary. `var` has function scope and hoisting behavior that causes bugs.
+**`var` for any declaration.** Use `const` by default, `let` only when reassignment is needed. `var` has function scope and hoisting behavior that produces subtle bugs.
 
-Never use `arguments` object — use rest parameters `...args` instead.
+**`== ` (loose equality).** Always use `===`. Loose equality coerces types silently — `0 == ''` is `true`.
 
-Avoid `for...in` on arrays — it iterates prototype chain and gives string keys.
-Use `for...of` or array methods.
+**Mutating function arguments directly.**
+```js
+// WRONG
+function setName(user) { user.name = 'X'; }
+// RIGHT
+function setName(user) { return { ...user, name: 'X' }; }
+```
+Mutation of passed objects causes invisible side effects across call sites.
 
-Never mutate function arguments — create new values instead.
-Mutation makes functions impure and harder to reason about.
+**`arguments` object inside functions.** Use rest parameters instead: `function fn(...args)`. `arguments` is not available in arrow functions and has no array methods.
+
+**Floating `async` without error handling.** Never call an async function without either `await` or `.catch()`. Unhandled promise rejections silently fail in most runtimes.
+
+**`for...in` on arrays.** Use `for...of` or `forEach`. `for...in` iterates enumerable string keys, including prototype properties, which produces unexpected results on arrays.
+
+---
+
+## Version-specific notes for AI agents
+
+- `?.` and `??` require Node ≥ 14 or a transpiler targeting ES2020+; never use them in code that must support IE11 or very old Node without a build step.
+- Top-level `await` only works inside ES modules (files with `"type": "module"` in `package.json` or `.mjs` extension); never emit it in CommonJS files.
+- `structuredClone` is available natively in Node ≥ 17 and modern browsers; add a polyfill or use `lodash.cloneDeep` for older targets.
+- `Array.at()` is ES2022 — confirm target environment before using it in library code without a polyfill.
+- `error.cause` is ES2022; when generating error-handling code for broad compatibility, include a fallback: `throw Object.assign(new Error(msg), { cause: err })`.

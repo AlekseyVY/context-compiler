@@ -89,15 +89,19 @@ The `CONTEXT.md` file is the most important input. It lives in your project root
 
 ## Supported technologies
 
-The compiler ships with skill files for the following technologies. If your project uses a technology not listed here, it is silently ignored — the compiler only acts on what it has knowledge about.
+The compiler ships with skill files for the following technologies. Detection is automatic — if your `package.json` contains a recognized dependency and a matching skill exists, it is loaded without any configuration. If a technology is not listed here, it is silently ignored.
 
-| Technology | Versioned skills | Generic fallback |
-|---|---|---|
-| TypeScript | 6.x | ✓ |
-| JavaScript (ES2025+) | — | ✓ |
-| Node.js | — | ✓ |
-| Angular | — | ✓ |
-| React | — | ✓ |
+Version-specific skills always take precedence over the generic fallback. For example, an Angular 19 project receives `angular/19/skill.md` rules — which include Signals, standalone-by-default, and incremental hydration guidance — rather than the generic Angular file.
+
+| Technology | Detected via | Versioned skills | Generic fallback |
+|---|---|---|---|
+| TypeScript | `typescript` in devDependencies | 4, 5, 6 | ✓ |
+| JavaScript (ES2025+) | absence of TypeScript | — | ✓ |
+| Node.js | `engines.node` in package.json | 18, 20, 22, 24 | ✓ |
+| Angular | `@angular/core` | 17, 18, 19, 20, 21 | ✓ |
+| React | `react` | 17, 18, 19 | ✓ |
+| NestJS | `@nestjs/core` | 9, 10, 11 | ✓ |
+| Next.js | `next` | 13, 14, 15, 16 | ✓ |
 
 Version-specific skills take precedence over generic ones. For example, a project on TypeScript 6 will receive the `typescript/6/skill.md` rules (which include TS6-specific changes like `strict: true` being the new default) in addition to the base TypeScript skill.
 
