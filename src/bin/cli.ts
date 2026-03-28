@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { runCompile } from "../commands/compile.js";
 import { runInit } from "../commands/init.js";
 
