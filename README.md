@@ -1,5 +1,10 @@
 # context-compiler
 
+[![npm version](https://img.shields.io/npm/v/context-compiler.svg)](https://www.npmjs.com/package/context-compiler)
+[![npm downloads](https://img.shields.io/npm/dm/context-compiler.svg)](https://www.npmjs.com/package/context-compiler)
+[![License](https://img.shields.io/npm/l/context-compiler.svg)](./LICENSE)
+[![Node.js](https://img.shields.io/node/v/context-compiler.svg)](https://nodejs.org)
+
 > Agentic context compiler for AI-assisted development in TypeScript and JavaScript projects.
 
 `context-compiler` analyzes your project's configuration files — `package.json`, `tsconfig.json`, ESLint rules, and your own `CONTEXT.md` — and synthesizes them into a single, conflict-free Cursor rules file (`.mdc`). It uses an LLM to resolve semantic conflicts between sources: if your `CONTEXT.md` says "we don't use ReactiveFormsModule" and the Angular skill recommends it, the compiler silently drops the irrelevant guidance rather than including contradictory instructions.
