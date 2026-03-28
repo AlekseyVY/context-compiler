@@ -33,7 +33,7 @@ async function skillExists(packageRoot: string, techName: string): Promise<boole
 async function detectTechnologies(
   pkg: PackageJsonData,
   packageRoot: string,
-  tsConfig: { compilerOptions?: Record<string, unknown> } | null,
+  resolvedLib: string[],
 ): Promise<DetectedTechnology[]> {
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
   const results: DetectedTechnology[] = [];
@@ -55,12 +55,11 @@ async function detectTechnologies(
     pkg.dependencies?.['@types/node']
   );
 
-  const libArray = (tsConfig?.compilerOptions?.lib as string[] | undefined)
-    ?.map(l => l.toLowerCase()) ?? [];
+  // resolvedLib already comes lowercased and flattened from resolveLibEntries —
+  // no need to extract from compilerOptions or call .toLowerCase() here.
+  const hasDomLib = resolvedLib.includes('dom');
 
-  const hasDomLib = libArray.includes('dom');
-
-  const shouldAddNode = hasTypesNode || (!hasDomLib && libArray.length > 0);
+  const shouldAddNode = hasTypesNode && !hasDomLib;
 
   if (shouldAddNode && (await skillExists(packageRoot, 'nodejs'))) {
     const raw = pkg.engines?.node ?? '>=22';
@@ -108,14 +107,58 @@ export async function scanProjectConfig(projectRoot: string): Promise<ScannedCon
   const tsConfig = tsconfigRaw
     ? (JSON.parse(tsconfigRaw) as { compilerOptions?: Record<string, unknown> })
     : null;
+  const resolvedLib = await resolveLibEntries(join(projectRoot, 'tsconfig.json'));
 
   return {
     projectName: pkg.name ?? 'unknown',
     projectRoot,
-    technologies: await detectTechnologies(pkg, packageRoot, tsConfig),
+    technologies: await detectTechnologies(pkg, packageRoot, resolvedLib),
     tsCompilerOptions: tsConfig?.compilerOptions ?? null,
     eslintRules: eslintRaw ? parseEslintRules(eslintRaw) : [],
     readmeContent: readmeRaw,
     contextMdContent: contextMdRaw,
   };
+}
+
+// Collect all lib entries from a tsconfig and any configs it references.
+// This handles the Vite composite build pattern where the root tsconfig.json
+// has no compilerOptions at all — only { "references": [...] }.
+// Without following references we'd always see an empty lib array for
+// root configs, making DOM detection impossible and causing false Node.js
+// skill injection.
+async function resolveLibEntries(
+  tsconfigPath: string,
+  visited = new Set<string>(),
+): Promise<string[]> {
+  // Guard against circular references (unlikely but possible in monorepos)
+  if (visited.has(tsconfigPath)) return [];
+  visited.add(tsconfigPath);
+
+  const raw = await safeReadFile(tsconfigPath);
+  if (!raw) return [];
+
+  let parsed: { compilerOptions?: { lib?: string[] }; references?: { path: string }[] };
+  try {
+    parsed = JSON.parse(raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''));
+  } catch {
+    return [];
+  }
+
+  // Collect lib from this config's own compilerOptions
+  const ownLib = parsed.compilerOptions?.lib ?? [];
+
+  // Then follow each referenced child config
+  const dir = join(tsconfigPath, '..');
+  const childLibs = await Promise.all(
+    (parsed.references ?? []).map(ref => {
+      // A reference path can point to a directory (resolved to tsconfig.json)
+      // or directly to a .json file
+      const refPath = ref.path.endsWith('.json')
+        ? join(dir, ref.path)
+        : join(dir, ref.path, 'tsconfig.json');
+      return resolveLibEntries(refPath, visited);
+    })
+  );
+
+  return [...ownLib, ...childLibs.flat()];
 }
