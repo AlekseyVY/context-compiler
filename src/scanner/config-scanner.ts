@@ -108,7 +108,7 @@ export async function scanProjectConfig(projectRoot: string): Promise<ScannedCon
   const tsConfig = tsconfigRaw
     ? (JSON.parse(tsconfigRaw) as { compilerOptions?: Record<string, unknown> })
     : null;
-  const resolvedLib = await collectRootLibEntries(join(projectRoot, 'tsconfig.json'));
+  const resolvedLib = await collectRootLibEntries(projectRoot);
   const technologies = await detectTechnologies(pkg, packageRoot, resolvedLib);
   const eslintRules = eslintRaw ? parseEslintRules(eslintRaw) : [];
 
