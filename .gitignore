@@ -3,6 +3,6 @@ dist/
 .env
 *.cache.json
 .DS_Store
-
-
+.agent
+.cursor
 src/debug-scan.ts
